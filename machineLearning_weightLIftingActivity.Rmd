@@ -14,6 +14,30 @@ knitr::opts_chunk$set(echo = TRUE,
 ```{r readData, include=FALSE}
 training <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
 testing <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+dim(training)
 ```
 
+## Introduction  
+The quantified self movement, empowered by wearable technology like Fitbits and Jawbone Ups, focuses on tracking the quantity of exercise. However, the quality of movement remains largely unquantified. This research addresses this gap by analyzing the execution of barbell lifts.  
+
+I use accelerometer data from six participants performing barbell lifts correctly and incorrectly across five variations. Data was collected from sensors on the belt, forearm, arm, and dumbbell. This detailed dataset allows for a granular analysis of movement mechanics during weight training, promising insights into personalized fitness and injury prevention.  
+
+## Method
+
+```{r exploratory, include=FALSE}
+outcome <- factor(training$classe) # factorize the outcome
+predictors <- apply(training[,grep("belt|forearm|arm|dumbbell", names(training))], MARGIN = 2, as.numeric) # numeric coercion of measure parts
+summary(outcome)
+na.sum <- apply(predictors, MARGIN=2, function(x) sum(is.na(x))) # look for NA by coercion
+summary(na.sum)
+drop <- na.sum[na.sum>=19216] ; length(drop)
+predictors <- data.frame(subset(predictors,select = !colnames(predictors) %in% names(drop)))
+
+pca <- caret::preProcess(predictors, method = "pca", thresh=0.95)
+pca
+summary(pca)
+plot(cumsum(pca$std^2) / sum(pca$std^2), type = "b", xlab = "Principal Components", ylab = "Cumulative Proportion of Variance Explained")
+
+predict(pca, predictors)
+```
 
