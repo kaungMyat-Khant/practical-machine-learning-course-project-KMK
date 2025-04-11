@@ -2,7 +2,9 @@
 title: "Human Activity Recognition in Weight Lifting Exercise"
 author: "Kaung Myat Khant"
 date: "`r Sys.Date()`"
-output: html_document
+output: 
+    html_document:  
+        keep_md: TRUE
 ---
 
 ```{r setup, include=FALSE}
@@ -11,33 +13,145 @@ knitr::opts_chunk$set(echo = TRUE,
                       warning = FALSE)
 ```
 
-```{r readData, include=FALSE}
-training <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
-testing <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
-dim(training)
-```
+## Introduction
 
-## Introduction  
-The quantified self movement, empowered by wearable technology like Fitbits and Jawbone Ups, focuses on tracking the quantity of exercise. However, the quality of movement remains largely unquantified. This research addresses this gap by analyzing the execution of barbell lifts.  
+The quantified self movement, empowered by wearable technology like Fitbits and Jawbone Ups, focuses on tracking the quantity of exercise. However, the quality of movement remains largely unquantified. This research addresses this gap by analyzing the execution of barbell lifts.
 
-I use accelerometer data from six participants performing barbell lifts correctly and incorrectly across five variations. Data was collected from sensors on the belt, forearm, arm, and dumbbell. This detailed dataset allows for a granular analysis of movement mechanics during weight training, promising insights into personalized fitness and injury prevention.  
+I use accelerometer data from six participants performing barbell lifts correctly and incorrectly across five variations. Data was collected from sensors on the belt, forearm, arm, and dumbbell. This detailed dataset allows for a granular analysis of movement mechanics during weight training, promising insights into personalized fitness and injury prevention.
 
 ## Method
 
-```{r exploratory, include=FALSE}
-outcome <- factor(training$classe) # factorize the outcome
-predictors <- apply(training[,grep("belt|forearm|arm|dumbbell", names(training))], MARGIN = 2, as.numeric) # numeric coercion of measure parts
-summary(outcome)
-na.sum <- apply(predictors, MARGIN=2, function(x) sum(is.na(x))) # look for NA by coercion
-summary(na.sum)
-drop <- na.sum[na.sum>=19216] ; length(drop)
-predictors <- data.frame(subset(predictors,select = !colnames(predictors) %in% names(drop)))
+### Load data and packages
 
-pca <- caret::preProcess(predictors, method = "pca", thresh=0.95)
-pca
-summary(pca)
-plot(cumsum(pca$std^2) / sum(pca$std^2), type = "b", xlab = "Principal Components", ylab = "Cumulative Proportion of Variance Explained")
+First of all, the data are downloaded directly from the link for [training](%22https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv%22) and [testing](%22https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv%22) datasets. Then, the *tidyverse*, *rpart*, *randomforest* and *caret* packages were loaded.
 
-predict(pca, predictors)
+```{r readData, include=FALSE}
+rm(list = ls())
+training <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+testing <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+dim(training)
+library(tidyverse)
+library(rpart)
+library(randomForest)
+library(caret)
 ```
 
+### Data cleaning
+
+First, the training data is sampled into training and validation sets.
+
+```{r partition, include=FALSE}
+set.seed(12345)
+inTrain <- createDataPartition(training$classe,
+                               p = 0.7, list = F)
+training <- training[inTrain,]
+validation <- training[-inTrain,]
+```
+
+Next, the acceleration measurements of belt, forearm, arm, and dumbbell are selected as predictors. Then, the missing values are checked for the outcome and predictor variables. Columns with missing values are dropped
+
+```{r cleanData, include=FALSE, results='hide'}
+
+training <- 
+    training %>% 
+    select(matches("belt|forearm|arm|dumbbell|classe"))  ## subset the measurements for training
+
+validation <- 
+    validation %>% 
+    select(matches("belt|forearm|arm|dumbbell|classe")) ## subset the measurements for validation 
+
+testing <- 
+    testing %>% 
+    select(matches("belt|forearm|arm|dumbbell|problem_id"))  ## subset the measurements for testing
+table(sapply(training, class)) ## 33 characters and 31 integers needs checking
+
+sapply(training[sapply(training,is.character)], unique) 
+# the characters are actually numeric, so they are converted into numeric
+sapply(training[sapply(training,is.integer)], unique) 
+# integer vectors are okay
+training$classe <- factor(training$classe)
+validation$classe <- factor(validation$classe)
+
+training <- 
+    training %>% 
+    mutate(across(where(is.character), as.numeric)) # convert to numeric
+
+validation <- 
+    validation %>% 
+    mutate(across(where(is.character), as.numeric)) # convert to numeric
+apply(training,2, function(x) sum(is.na(x))) ## check for NA
+sum(is.na(training$classe)) ## no NA
+training <- 
+    training %>%  
+    select_if(~!any(is.na(.))) # remove NA containing columns
+
+validation <- 
+    validation %>%  
+    select_if(~!any(is.na(.))) # remove NA containing columns
+```
+
+### Exploratory data analysis
+
+Correlation plot with hierarchical cluster is drawn to see the correlation between the predictors.
+
+```{r explore, include=TRUE, fig.cap="Correlation plot showing the correlation between the numerical predictors"}
+cor <- cor(training[,-53])
+corrplot::corrplot(cor, order = 'hclust', diag = F, addrect = 2)
+
+```
+
+### Preparing data
+
+The principal component analysis is applied to the predictors with a threshold to explain 80% of variation among the predictors.
+
+```{r PCA, include=TRUE}
+pca <- preProcess(training,method = "pca", thresh = 0.9)
+pca
+train.pca <- predict(pca, training)
+validation.pca <- predict(pca, validation)
+testing.pca <- predict(pca, testing)
+```
+
+PCA needed 18 components to capture 90 percent of the variance among the predictors. Pre-processed sets for training, validation and testing data are produced.
+
+### Model training
+
+Decision tree model and random forest model are trained with the processed training set. In random forest model, re-sampling by three-fold cross-validation is used to get the model.
+
+```{r models, include=FALSE}
+set.seed(123)
+model.tree <- train(classe ~ ., data = train.pca, method = "rpart")
+control <- trainControl(method = "cv", number = 3)  # 3-fold cross-validation
+model.rf <- train(classe ~ ., data = train.pca, method = "rf",trControl = control)
+```
+
+### Validation
+The trained models are used to test on the validation set.
+
+```{r validate, include=TRUE}
+tree.predict <- predict(model.tree, newdata = validation.pca)
+confusionMatrix(tree.predict, validation.pca$classe)
+rf.predict <- predict(model.rf, newdata = validation.pca)
+confusionMatrix(rf.predict, validation.pca$classe)
+```
+
+It is clear that the random forest model has far better accuracy, with even 100%. So , it is selected to predict the testing data.
+
+## Result
+
+The random forest model is used to solve the problem given by testing data of 20 observation.
+
+```{r result, include=TRUE}
+rf.predict.result <- predict(model.rf,newdata =  testing.pca)
+print("Result of the predictions by Random forest model:")
+rf.predict.result
+```
+
+```{r bar, include=TRUE, fig.cap="Classe prdicted by the random forest model from the testing set"}
+ggplot(as.data.frame(table(rf.predict.result)), aes(rf.predict.result,Freq))+
+    geom_col(aes(fill = rf.predict.result))+
+    scale_fill_manual(values = RColorBrewer::brewer.pal(n = 5, name = "Accent"))+
+    labs(x = "Classe", y = "Count")+
+    theme_bw()+
+    theme(legend.position = "")
+```
