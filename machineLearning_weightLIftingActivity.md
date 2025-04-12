@@ -43,7 +43,7 @@ cor <- cor(training[,-53])
 corrplot::corrplot(cor, order = 'hclust', diag = F, addrect = 2)
 ```
 
-![Correlation plot showing the correlation between the numerical predictors](machineLearning_weightLIftingActivity_files/figure-html/explore-1.png)
+![Correlation plot showing there is correlation between the numerical predictors](machineLearning_weightLIftingActivity_files/figure-html/explore-1.png)
 
 ### Preparing data
 
@@ -51,7 +51,7 @@ The principal component analysis is applied to the predictors with a threshold t
 
 
 ``` r
-pca <- preProcess(training,method = "pca", thresh = 0.9)
+pca <- preProcess(training,method = "pca", thresh = 0.8)
 pca
 ```
 
@@ -64,7 +64,7 @@ pca
 ##   - principal component signal extraction (52)
 ##   - scaled (52)
 ## 
-## PCA needed 18 components to capture 90 percent of the variance
+## PCA needed 12 components to capture 80 percent of the variance
 ```
 
 ``` r
@@ -73,7 +73,7 @@ validation.pca <- predict(pca, validation)
 testing.pca <- predict(pca, testing)
 ```
 
-PCA needed 18 components to capture 90 percent of the variance among the predictors. Pre-processed sets for training, validation and testing data are produced.
+PCA needed 12 components to capture 80 percent of the variance among the predictors. Pre-processed sets for training, validation and testing data are produced.
 
 ### Model training
 
@@ -94,35 +94,35 @@ confusionMatrix(tree.predict, validation.pca$classe)
 ## Confusion Matrix and Statistics
 ## 
 ##           Reference
-## Prediction    A    B    C    D    E
-##          A 1076  530  691  334  456
-##          B    0    0    0    0    0
-##          C    0    0    0    0    0
-##          D   75  161   24  264  101
-##          E   21  107    8   55  237
+## Prediction   A   B   C   D   E
+##          A 615 201 254  58 190
+##          B  35 170  14  54 113
+##          C 416 242 430 234 220
+##          D  67 108  16 167  51
+##          E  39  77   9 140 220
 ## 
 ## Overall Statistics
-##                                           
-##                Accuracy : 0.3809          
-##                  95% CI : (0.3661, 0.3959)
-##     No Information Rate : 0.2831          
-##     P-Value [Acc > NIR] : < 2.2e-16       
-##                                           
-##                   Kappa : 0.1693          
-##                                           
-##  Mcnemar's Test P-Value : NA              
+##                                          
+##                Accuracy : 0.387          
+##                  95% CI : (0.3721, 0.402)
+##     No Information Rate : 0.2831         
+##     P-Value [Acc > NIR] : < 2.2e-16      
+##                                          
+##                   Kappa : 0.2228         
+##                                          
+##  Mcnemar's Test P-Value : < 2.2e-16      
 ## 
 ## Statistics by Class:
 ## 
 ##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity            0.9181   0.0000   0.0000  0.40429  0.29849
-## Specificity            0.3224   1.0000   1.0000  0.89647  0.94292
-## Pos Pred Value         0.3486      NaN      NaN  0.42240  0.55374
-## Neg Pred Value         0.9088   0.8072   0.8254  0.88933  0.84995
-## Prevalence             0.2831   0.1928   0.1746  0.15773  0.19179
-## Detection Rate         0.2599   0.0000   0.0000  0.06377  0.05725
-## Detection Prevalence   0.7457   0.0000   0.0000  0.15097  0.10338
-## Balanced Accuracy      0.6203   0.5000   0.5000  0.65038  0.62070
+## Sensitivity            0.5247  0.21303   0.5947  0.25574  0.27708
+## Specificity            0.7631  0.93537   0.6746  0.93060  0.92080
+## Pos Pred Value         0.4666  0.44041   0.2789  0.40831  0.45361
+## Neg Pred Value         0.8026  0.83271   0.8872  0.86974  0.84295
+## Prevalence             0.2831  0.19275   0.1746  0.15773  0.19179
+## Detection Rate         0.1486  0.04106   0.1039  0.04034  0.05314
+## Detection Prevalence   0.3184  0.09324   0.3725  0.09879  0.11715
+## Balanced Accuracy      0.6439  0.57420   0.6347  0.59317  0.59894
 ```
 
 ``` r
@@ -186,7 +186,7 @@ rf.predict.result
 ```
 
 ```
-##  [1] B A A A A E D B A A B C B A E E A B B B
+##  [1] A A A A A E D B A A A C B A E E A B B B
 ## Levels: A B C D E
 ```
 

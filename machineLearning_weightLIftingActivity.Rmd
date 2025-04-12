@@ -94,7 +94,7 @@ validation <-
 
 Correlation plot with hierarchical cluster is drawn to see the correlation between the predictors.
 
-```{r explore, include=TRUE, fig.cap="Correlation plot showing the correlation between the numerical predictors"}
+```{r explore, include=TRUE, fig.cap="Correlation plot showing there is correlation between the numerical predictors"}
 cor <- cor(training[,-53])
 corrplot::corrplot(cor, order = 'hclust', diag = F, addrect = 2)
 
@@ -105,14 +105,14 @@ corrplot::corrplot(cor, order = 'hclust', diag = F, addrect = 2)
 The principal component analysis is applied to the predictors with a threshold to explain 80% of variation among the predictors.
 
 ```{r PCA, include=TRUE}
-pca <- preProcess(training,method = "pca", thresh = 0.9)
+pca <- preProcess(training,method = "pca", thresh = 0.8)
 pca
 train.pca <- predict(pca, training)
 validation.pca <- predict(pca, validation)
 testing.pca <- predict(pca, testing)
 ```
 
-PCA needed 18 components to capture 90 percent of the variance among the predictors. Pre-processed sets for training, validation and testing data are produced.
+PCA needed 12 components to capture 80 percent of the variance among the predictors. Pre-processed sets for training, validation and testing data are produced.
 
 ### Model training
 
